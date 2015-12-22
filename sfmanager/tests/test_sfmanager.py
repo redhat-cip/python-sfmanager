@@ -70,6 +70,16 @@ class TestProjectUserAction(BaseFunctionalTest):
         self.assert_secure('put', args,
                            sfmanager.project_action, expected_url)
 
+    def test_create_project_with_branches(self):
+        cmd = 'project create --name proj2 --upstream ssh://tests.dom/test.git' \
+              ' --add-branches'
+        args = self.default_args
+        args += cmd.split()
+        excepted_url = self.base_url + 'project/proj2/'
+        self.assert_secure('put', args, sfmanager.project_action, excepted_url,
+                           {'upstream': 'ssh://tests.dom/test.git',
+                            'add-branches': True})
+
     def test_delete_project(self):
         args = self.default_args
         args += 'project delete --name proj1'.split()
