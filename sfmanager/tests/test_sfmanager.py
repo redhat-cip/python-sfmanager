@@ -71,8 +71,8 @@ class TestProjectUserAction(BaseFunctionalTest):
                            sfmanager.project_action, expected_url)
 
     def test_create_project_with_branches(self):
-        cmd = 'project create --name proj2 --upstream ssh://tests.dom/test.git' \
-              ' --add-branches'
+        cmd = 'project create --name proj2 --upstream' \
+              ' ssh://tests.dom/test.git --add-branches'
         args = self.default_args
         args += cmd.split()
         excepted_url = self.base_url + 'project/proj2/'
@@ -172,7 +172,7 @@ class TestUserActions(BaseFunctionalTest):
         data = {'email': 'e@test.com', 'password': 'abc123'}
         cmd = 'user update --password'
         args += cmd.format(**data).split()
-        self.assertRaises(SystemExit, self.parser.parse_args, args)
+        self.assertRaises(SystemExit, self.parser.parse_args)
 
 
 class TestReplicationActions(BaseFunctionalTest):
