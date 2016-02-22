@@ -378,6 +378,25 @@ def tests_command(parser):
                       required=True)
 
 
+def github_command(parser):
+    gh = parser.add_parser('github', help='Github tools')
+
+    sub_cmd = gh.add_subparsers(dest='subcommand')
+
+    createrepo = sub_cmd.add_parser('create-repo')
+    createrepo.add_argument(
+        '--name', '-n', nargs='?', metavar='project-name', required=True)
+
+    deleterepo = sub_cmd.add_parser('delete-repo')
+    deleterepo.add_argument(
+        '--name', '-n', nargs='?', metavar='project-name', required=True)
+
+    deploy_key = sub_cmd.add_parser('deploy-key')
+    deploy_key.add_argument(
+        '--name', '-n', nargs='?', metavar='project-name', required=True)
+    deploy_key.add_argument('--keyfile', nargs='?', required=True)
+
+
 def command_options(parser):
     sp = parser.add_subparsers(dest="command")
     project_commands = sp.add_parser('project',
@@ -404,6 +423,7 @@ def command_options(parser):
     replication_command(sp)
     tests_command(sp)
     pages_command(sp)
+    github_command(sp)
 
 
 def get_cookie(args):
@@ -812,6 +832,63 @@ def replication_action(args, base_url, headers):
         resp = requests.post(url, headers=headers, data=json.dumps(info),
                              cookies=dict(auth_pubtkt=get_cookie(args)))
         return response(resp)
+    return False
+
+
+def github_action(args, base_url, headers):
+    if args.subcommand not in ['create-repo', 'delete-repo', 'deploy-key']:
+        return False
+
+    if not (args.name and args.github_token):
+        return False
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "token %s" % args.github_token
+    }
+
+    if args.subcommand == 'create-repo':
+        data = json.dumps({"name": args.name, "private": False})
+
+        url = "https://api.github.com/user/repos"
+        resp = requests.post(url, headers=headers, data=data)
+        if resp.status_code == requests.codes.created:
+            logger.info("Github repo %s created." % args.name)
+        return response(resp)
+
+    if args.subcommand == 'delete-repo':
+        url = "https://api.github.com/user"
+        resp = requests.get(url, headers=headers)
+        login = resp.json().get('login')
+
+        url = "https://api.github.com/repos/%s/%s" % (login, args.name)
+        resp = requests.delete(url, headers=headers)
+        if resp.status_code == requests.codes.ok:
+            logger.info("Github repo %s deleted." % args.name)
+        return response(resp)
+
+    if args.subcommand == "deploy-key":
+        if args.keyfile:
+            url = "https://api.github.com/user"
+            resp = requests.get(url, headers=headers)
+            login = resp.json().get('login')
+
+            with open(args.keyfile, 'r') as f:
+                sshkey = f.read()
+
+            data = json.dumps(
+                {"title": "%s ssh key" % login,
+                 "key": sshkey, "read_only": False}
+            )
+
+            url = "https://api.github.com/repos/%s/%s/keys" % (
+                login, args.name)
+            resp = requests.post(url, headers=headers, data=data)
+
+            if resp.status_code == requests.codes.created:
+                logger.info("SSH deploy key %s added to Github repo %s." % (
+                            args.keyfile, args.name))
+            return response(resp)
 
     return False
 
@@ -920,7 +997,8 @@ def main():
            gerrit_ssh_config_action(args, base_url, headers) or
            membership_action(args, base_url, headers) or
            tests_action(args, base_url, headers) or
-           pages_action(args, base_url, headers)):
+           pages_action(args, base_url, headers) or
+           github_action(args, base_url, headers)):
         die("ManageSF failed to execute your command")
 
 if __name__ == '__main__':
