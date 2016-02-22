@@ -14,7 +14,8 @@
 
 import argparse
 import json
-from tempfile import mkstemp
+import os
+from tempfile import mkstemp, NamedTemporaryFile
 
 from unittest import TestCase
 from mock import patch, MagicMock
@@ -260,3 +261,61 @@ class TestSystemActions(BaseFunctionalTest):
                                                             self.base_url,
                                                             self.headers))
                     method.assert_called_with(expected_url, **params)
+
+
+class TestGithubActions(BaseFunctionalTest):
+    def test_create_repo(self):
+        args = self.default_args
+        args += '--github-token ghtoken github create-repo -n reponame'.split()
+        parsed_args = self.parser.parse_args(args)
+
+        with patch('requests.post') as method:
+            expected_url = "https://api.github.com/user/repos"
+            kwargs = {'headers': {
+                'Content-Type': 'application/json',
+                'Authorization': 'token ghtoken'},
+                'data': '{"name": "reponame", "private": false}'}
+            sfmanager.github_action(parsed_args, expected_url, {})
+            method.assert_called_with(expected_url, **kwargs)
+
+    @patch('requests.delete')
+    @patch('requests.get')
+    def test_delete_repo(self, get_method, delete_method):
+        args = self.default_args
+        args += '--github-token ghtoken github delete-repo -n reponame'.split()
+        parsed_args = self.parser.parse_args(args)
+
+        get_method.return_value.json.return_value = {'login': 'username'}
+        expected_url = "https://api.github.com/repos/username/reponame"
+        kwargs = {
+            'headers': {'Content-Type': 'application/json',
+                        'Authorization': 'token ghtoken'}}
+        sfmanager.github_action(parsed_args, expected_url, {})
+        delete_method.assert_called_with(expected_url, **kwargs)
+
+    @patch('requests.post')
+    @patch('requests.get')
+    def test_deploy_key(self, get_method, post_method):
+        with NamedTemporaryFile(delete=False) as tmpfile:
+            tmpfile.write("ssh-rsa")
+
+        args = '--github-token ghtoken '
+        args += 'github deploy-key -n reponame --keyfile %s' % tmpfile.name
+        args = self.default_args + args.split()
+        parsed_args = self.parser.parse_args(args)
+
+        get_method.return_value.json.return_value = {'login': 'username'}
+        expected_url = "https://api.github.com/repos/username/reponame/keys"
+        kwargs = {'headers': {
+            'Content-Type': 'application/json',
+            'Authorization': 'token ghtoken'},
+            'data': '{"read_only": false, "key": ' +
+            '"ssh-rsa", "title": "username ssh key"}'}
+        sfmanager.github_action(parsed_args, expected_url, {})
+        post_method.assert_called_with(expected_url, **kwargs)
+
+        # Remove tmpfile
+        try:
+            os.remove(tmpfile.name)
+        except IOError:
+            pass
