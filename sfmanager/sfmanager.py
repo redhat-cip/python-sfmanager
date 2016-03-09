@@ -575,7 +575,8 @@ def project_action(args, base_url, headers):
     else:
         return False
 
-    url = build_url(base_url, "project", args.name)
+    name = '===' + base64.urlsafe_b64encode(args.name)
+    url = build_url(base_url, "project", name)
     if subcommand == 'create':
         if getattr(args, 'core_group'):
             args.core_group = split_and_strip(args.core_group)
