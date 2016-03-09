@@ -15,10 +15,10 @@
 import argparse
 import json
 import os
-from tempfile import mkstemp, NamedTemporaryFile
-
-from unittest import TestCase
 from mock import patch, MagicMock
+from tempfile import mkstemp, NamedTemporaryFile
+from unittest import TestCase
+import urllib
 
 from sfmanager import sfmanager
 
@@ -69,8 +69,9 @@ class BaseFunctionalTest(TestCase):
 class TestProjectUserAction(BaseFunctionalTest):
     def test_create_project(self):
         args = self.default_args
-        args += 'project create --name proj1'.split()
-        expected_url = self.base_url + 'project/proj1/'
+        args += 'project create --name ns1/proj1'.split()
+        name = urllib.quote_plus('ns1/proj1')
+        expected_url = self.base_url + 'project/%s/' % name
         self.assert_secure('put', args,
                            sfmanager.project_action, expected_url)
 

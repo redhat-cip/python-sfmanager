@@ -26,6 +26,7 @@ import requests
 import sqlite3
 import sys
 import time
+import urllib
 import urlparse
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
@@ -575,7 +576,8 @@ def project_action(args, base_url, headers):
     else:
         return False
 
-    url = build_url(base_url, "project", args.name)
+    name = urllib.quote_plus(args.name)
+    url = build_url(base_url, "project", name)
     if subcommand == 'create':
         if getattr(args, 'core_group'):
             args.core_group = split_and_strip(args.core_group)
