@@ -13,12 +13,12 @@
 # under the License.
 
 import argparse
+import base64
 import json
 import os
-from tempfile import mkstemp, NamedTemporaryFile
-
-from unittest import TestCase
 from mock import patch, MagicMock
+from tempfile import mkstemp, NamedTemporaryFile
+from unittest import TestCase
 
 from sfmanager import sfmanager
 
@@ -69,8 +69,9 @@ class BaseFunctionalTest(TestCase):
 class TestProjectUserAction(BaseFunctionalTest):
     def test_create_project(self):
         args = self.default_args
-        args += 'project create --name proj1'.split()
-        expected_url = self.base_url + 'project/proj1/'
+        args += 'project create --name ns1/proj1'.split()
+        name = '===' + base64.urlsafe_b64encode('ns1/proj1')
+        expected_url = self.base_url + 'project/%s/' % name
         self.assert_secure('put', args,
                            sfmanager.project_action, expected_url)
 
@@ -79,7 +80,8 @@ class TestProjectUserAction(BaseFunctionalTest):
                '--upstream ssh://tests.dom/test.git --add-branches')
         args = self.default_args
         args += cmd.split()
-        excepted_url = self.base_url + 'project/proj2/'
+        name = '===' + base64.urlsafe_b64encode('proj2')
+        excepted_url = self.base_url + 'project/%s/' % name
         self.assert_secure('put', args, sfmanager.project_action, excepted_url,
                            {'upstream': 'ssh://tests.dom/test.git',
                             'add-branches': True})
@@ -87,7 +89,8 @@ class TestProjectUserAction(BaseFunctionalTest):
     def test_delete_project(self):
         args = self.default_args
         args += 'project delete --name proj1'.split()
-        expected_url = self.base_url + 'project/proj1/'
+        name = '===' + base64.urlsafe_b64encode('proj1')
+        expected_url = self.base_url + 'project/%s/' % name
         self.assert_secure('delete', args,
                            sfmanager.project_action, expected_url)
 
