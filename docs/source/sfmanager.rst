@@ -496,6 +496,13 @@ SF allows you to restore a backup in one of the following way.
            system restore --filename sf_backup.tar.gz
 
 
+.. note:: When restoring a backup on a new, fresh deployment where sfconfig.sh
+   run before, make sure to remove /home/gerrit/site_path/git/All-Projects.git
+   before. The restore process might skip it, and settings and permissions might
+   be wrong afterwards. Also, check if /etc/hosts contains wrong entries and
+   remove them.
+
+
 Provide a private ssh key to the Gerrit replication plugin
 ----------------------------------------------------------
 
