@@ -349,6 +349,20 @@ class TestGithubActions(BaseFunctionalTest):
 
     @patch('requests.delete')
     @patch('requests.get')
+    def test_delete_branch(self, get_method, delete_method):
+        args = '--github-token ghtoken github'
+        args += 'delete-branch -n reponame -b master'
+        parsed_args = self.parser.parse_args(args.split())
+
+        get_method.return_value.json.return_value = {'login': 'username'}
+        expected_url = "https://api.github.com/" + \
+                       "repos/username/reponame/git/refs/heads/master"
+        kwargs = {'headers': self.expected_gh_headers}
+        sfmanager.github_action(parsed_args, "", {})
+        delete_method.assert_called_with(expected_url, **kwargs)
+
+    @patch('requests.delete')
+    @patch('requests.get')
     def test_delete_org_repo(self, get_method, delete_method):
         args = '--github-token ghtoken '
         args += 'github delete-repo -n reponame -o orgname'

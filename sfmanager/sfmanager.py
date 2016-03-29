@@ -363,6 +363,14 @@ def github_command(parser):
     deleterepo.add_argument(
         '--org', '-o', nargs='?', metavar='organization')
 
+    deletebranch = sub_cmd.add_parser('delete-branch')
+    deletebranch.add_argument(
+        '--name', '-n', nargs='?', metavar='project-name', required=True)
+    deletebranch.add_argument(
+        '--branchname', '-b', nargs='?', metavar='branch-name', required=True)
+    deletebranch.add_argument(
+        '--org', '-o', nargs='?', metavar='organization')
+
     deploy_key = sub_cmd.add_parser('deploy-key')
     deploy_key.add_argument(
         '--name', '-n', nargs='?', metavar='project-name', required=True)
@@ -637,6 +645,7 @@ def gerrit_api_htpasswd_action(args, base_url, headers):
 
 def github_action(args, base_url, headers):
     if args.subcommand not in ['create-repo', 'delete-repo',
+                               'delete-branch',
                                'deploy-key', 'fork-repo']:
         return False
 
@@ -702,6 +711,23 @@ def github_action(args, base_url, headers):
         resp = requests.delete(url, headers=headers)
         if resp.status_code == requests.codes.no_content:
             print "Github repo %s deleted." % args.name
+        return response(resp)
+
+    elif args.subcommand == 'delete-branch':
+        if args.org:
+            owner = args.org
+        else:
+            url = "https://api.github.com/user"
+            resp = requests.get(url, headers=headers)
+            owner = resp.json().get('login')
+
+        url = "https://api.github.com/repos/%s/%s/git/refs/heads/%s" % (
+            owner, args.name, args.branchname)
+
+        resp = requests.delete(url, headers=headers)
+        if resp.status_code == requests.codes.no_content:
+            print "Branch %s on Github repo %s deleted." % (
+                args.branchname, args.name)
         return response(resp)
 
     elif args.subcommand == "deploy-key":
