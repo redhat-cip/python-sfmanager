@@ -170,6 +170,9 @@ def default_arguments(parser):
     parser.add_argument('--insecure', default=False, action='store_true',
                         help='disable SSL certificate verification, '
                         'verification is enabled by default')
+    parser.add_argument('--json', default=False, action='store_true',
+                        help='Return output as JSON instead of '
+                        'human readable output')
     parser.add_argument('--debug', default=False, action='store_true',
                         help='enable debug messages in console, '
                         'disabled by default')
@@ -198,8 +201,6 @@ def membership_command(parser):
     remove.add_argument('--group', metavar='[core-group|dev-group|ptl-group]',
                         help="The project's group(s)",
                         choices=['core-group', 'dev-group', 'ptl-group'])
-    sub_cmd.add_parser('list',
-                       help='Print a list of active users in Software Factory')
 
 
 def system_command(parser):
@@ -472,11 +473,17 @@ def get_cookie(args):
         die(e.message)
 
 
-def response(resp, as_text=False, quiet=False):
+def response(resp, args, quiet=False):
     if resp.ok:
         if not quiet:
-            if as_text:
-                print json.loads(resp.text)
+            content_json = \
+                resp.headers.get(
+                    'content-type', '').startswith("application/json")
+            if args.json and content_json:
+                # Return raw if asked and the return content is already json
+                print resp.text
+            elif content_json:
+                print resp.json()
             else:
                 print resp.text
         return True
@@ -505,14 +512,6 @@ def membership_action(args, base_url, headers):
         return False
     auth_cookie = {'auth_pubtkt': get_cookie(args)}
 
-    if args.subcommand == 'list':
-        msg = ('This command is deprecated, use '
-               '"sfmanager sf_user list" instead')
-        logger.info(msg)
-        url = build_url(base_url, 'project/membership')
-        resp = requests.get(url, headers=headers, cookies=auth_cookie)
-        return response(resp)
-
     if '/' in args.project:
         project_name = '===' + base64.urlsafe_b64encode(args.project)
     else:
@@ -525,7 +524,7 @@ def membership_action(args, base_url, headers):
             data = json.dumps({'groups': args.groups})
         resp = requests.put(url, headers=headers, data=data,
                             cookies=auth_cookie)
-        return response(resp)
+        return response(resp, args)
 
     if args.subcommand == 'remove':
         logger.info('Remove member %s from project %s', args.user,
@@ -533,7 +532,7 @@ def membership_action(args, base_url, headers):
         if args.group:
             url = build_url(url, args.group)
         resp = requests.delete(url, headers=headers, cookies=auth_cookie)
-        return response(resp)
+        return response(resp, args)
 
     return False
 
@@ -575,7 +574,7 @@ def project_action(args, base_url, headers):
     else:
         return False
 
-    return response(resp)
+    return response(resp, args)
 
 
 def tests_action(args, base_url, headers):
@@ -594,7 +593,7 @@ def tests_action(args, base_url, headers):
 
     resp = requests.put(url, data=json.dumps(data), headers=headers,
                         cookies=dict(auth_pubtkt=get_cookie(args)))
-    return response(resp)
+    return response(resp, args)
 
 
 def pages_action(args, base_url, headers):
@@ -615,7 +614,7 @@ def pages_action(args, base_url, headers):
     if args.subcommand == 'delete':
         resp = requests.delete(url, headers=headers,
                                cookies=dict(auth_pubtkt=get_cookie(args)))
-    return response(resp)
+    return response(resp, args)
 
 
 def backup_action(args, base_url, headers):
@@ -637,7 +636,7 @@ def backup_action(args, base_url, headers):
 
     elif args.subcommand == 'backup_start':
         resp = requests.post(url, **params)
-        return response(resp)
+        return response(resp, args)
 
     elif args.subcommand == 'restore':
         url = build_url(base_url, 'restore')
@@ -647,7 +646,7 @@ def backup_action(args, base_url, headers):
         files = {'file': open(filename, 'rb')}
         resp = requests.post(url, headers=headers, files=files,
                              cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp)
+        return response(resp, args)
 
     return False
 
@@ -663,12 +662,12 @@ def gerrit_api_htpasswd_action(args, base_url, headers):
     if args.subcommand == 'generate_password':
         resp = requests.put(url, headers=headers,
                             cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp, as_text=True)
+        return response(resp, args)
 
     elif args.subcommand == 'delete_password':
         resp = requests.delete(url, headers=headers,
                                cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp, quiet=True)
+        return response(resp, args, quiet=True)
 
 
 def github_action(args, base_url, headers):
@@ -694,7 +693,7 @@ def github_action(args, base_url, headers):
         resp = requests.post(url, headers=headers, data=data)
         if resp.status_code == requests.codes.created:
             print "Github repo %s created." % args.name
-        return response(resp, quiet=True)
+        return response(resp, args, quiet=True)
 
     elif args.subcommand == 'fork-repo':
         parsed = urlparse.urlparse(args.fork)
@@ -721,9 +720,9 @@ def github_action(args, base_url, headers):
             resp2 = requests.patch(url, headers=headers, data=data)
             if resp2.status_code == requests.codes.ok:
                 print "Github repo renamed from %s to %s" % (repo, args.name)
-            return response(resp2, quiet=True)
+            return response(resp2, args, quiet=True)
         else:
-            return response(resp1, quiet=True)
+            return response(resp1, args, quiet=True)
 
     elif args.subcommand == 'delete-repo':
         if args.org:
@@ -738,7 +737,7 @@ def github_action(args, base_url, headers):
         resp = requests.delete(url, headers=headers)
         if resp.status_code == requests.codes.no_content:
             print "Github repo %s deleted." % args.name
-        return response(resp)
+        return response(resp, args)
 
     elif args.subcommand == "deploy-key":
         if args.keyfile:
@@ -764,7 +763,7 @@ def github_action(args, base_url, headers):
             if resp.status_code == requests.codes.created:
                 print "SSH deploy key %s added to Github repo %s." % (
                     args.keyfile, args.name)
-            return response(resp, quiet=True)
+            return response(resp, args, quiet=True)
 
     return False
 
@@ -795,10 +794,17 @@ def user_management_action(args, base_url, headers):
             info['password'] = password
         resp = requests.post(url, headers=headers, data=json.dumps(info),
                              cookies=dict(auth_pubtkt=get_cookie(args)))
+        if args.subcommand is 'create' and resp.ok and not args.json:
+            pt = PrettyTable(["Username", "Fullname", "Email"])
+            i = resp.json()
+            pt.add_row(
+                [i['username'], i['fullname'], i['email']])
+            print pt
+            return True
     if args.subcommand == 'delete':
         resp = requests.delete(url, headers=headers,
                                cookies=dict(auth_pubtkt=get_cookie(args)))
-    return response(resp)
+    return response(resp, args)
 
 
 def services_users_management_action(args, base_url, headers):
@@ -825,7 +831,18 @@ def services_users_management_action(args, base_url, headers):
     elif args.subcommand == 'list':
         resp = requests.get(url, headers=headers,
                             cookies=dict(auth_pubtkt=get_cookie(args)))
-    return response(resp)
+        if resp.ok and not args.json:
+            pt = PrettyTable(["Username", "Fullname", "Email",
+                              "Cauth_id", "Id"])
+            for i in resp.json():
+                pt.add_row(
+                    [i['username'], i['fullname'], i['email'],
+                     i['cauth_id'], i['id']])
+            print pt
+            return True
+        else:
+            return response(resp, args)
+    return response(resp, args)
 
 
 def groups_management_action(args, base_url, headers):
@@ -840,7 +857,7 @@ def groups_management_action(args, base_url, headers):
             url = build_url(base_url, 'group', args.name)
         resp = requests.get(url, headers=headers,
                             cookies=dict(auth_pubtkt=get_cookie(args)))
-        if resp.ok:
+        if resp.ok and not args.json:
             if not args.name:
                 pt = PrettyTable(["Group name", "Description", "Users"])
                 for k, v in resp.json().items():
@@ -854,18 +871,18 @@ def groups_management_action(args, base_url, headers):
             print pt
             return True
         else:
-            return response(resp)
+            return response(resp, args)
     if args.subcommand == 'create':
         url = build_url(base_url, 'group', urllib.quote_plus(args.name))
         data = json.dumps({'description': args.description})
         resp = requests.put(url, data=data, headers=headers,
                             cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp, quiet=True)
+        return response(resp, args, quiet=True)
     if args.subcommand == 'delete':
         url = build_url(base_url, 'group', urllib.quote_plus(args.name))
         resp = requests.delete(url, headers=headers,
                                cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp, quiet=True)
+        return response(resp, args, quiet=True)
     if args.subcommand in ['add', 'remove']:
         url = build_url(base_url, 'group', urllib.quote_plus(args.name))
         resp = requests.get(url, headers=headers,
@@ -879,7 +896,7 @@ def groups_management_action(args, base_url, headers):
             data = json.dumps({'members': list(new)})
             resp = requests.post(url, data=data, headers=headers,
                                  cookies=dict(auth_pubtkt=get_cookie(args)))
-        return response(resp, quiet=True)
+        return response(resp, args, quiet=True)
 
 
 def main():
