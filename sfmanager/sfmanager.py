@@ -915,8 +915,8 @@ def main():
 
     # Set local url and auth if sfconfig.yaml is present
     sfconfig = None
-    if os.path.isfile("/etc/puppet/hiera/sf/sfconfig.yaml"):
-        sfconfig = yaml.load(open("/etc/puppet/hiera/sf/sfconfig.yaml"))
+    if os.path.isfile("/etc/software-factory/sfconfig.yaml"):
+        sfconfig = yaml.load(open("/etc/software-factory/sfconfig.yaml"))
     if not args.url and sfconfig:
         args.url = "http://%s" % sfconfig["fqdn"]
     if not args.auth and sfconfig:
