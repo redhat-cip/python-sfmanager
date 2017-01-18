@@ -185,6 +185,36 @@ class TestJobsActions(BaseFunctionalTest):
                                                       'status': 'ABORTED'}})
 
 
+class TestNodesActions(BaseFunctionalTest):
+    def test_list_nodes(self):
+        args = self.default_args
+        args += 'node list --id toto'.split()
+        expected_url = self.base_url + 'nodes/id/toto'
+        keys = ['node_id', 'provider_name', 'AZ', 'label',
+                'target', 'manager', 'hostname', 'node_name',
+                'server_id', 'ip', 'state', 'age']
+        node_info = dict(zip(keys, ['aaa'] * len(keys)))
+        returned_json = {'nodepool': [node_info, ]}
+        self.assert_secure('get', args,
+                           sfmanager.job_action, expected_url,
+                           returned_json=returned_json)
+
+#    def test_add_user_key(self):
+#        args = self.default_args
+#        expected_url = self.base_url + 'nodes/id/toto/authorize_key/'
+#        with NamedTemporaryFile(delete=False) as tmpfile:
+#            tmpfile.write("ssh-rsa blah")
+#        args += ('node add-user-key --id toto --key %s' % tmpfile.name).split()
+#        returned_json = {'nodepool': "OK"}
+#        self.assert_secure('post', args,
+#                           sfmanager.job_action, expected_url,
+#                           returned_json=returned_json)
+#        try:
+#            os.remove(tmpfile.name)
+#        except IOError:
+#            pass
+
+
 class TestMembershipAction(BaseFunctionalTest):
     def test_project_add_user_to_groups(self):
         args = self.default_args
