@@ -429,8 +429,6 @@ def command_options(parser):
     sf_user_management_command(sp)
     gerrit_api_htpassword_command(sp)
     system_command(sp)
-    tests_command(sp)
-    pages_command(sp)
     github_command(sp)
     job_command(sp)
     node_command(sp)
@@ -689,41 +687,6 @@ def job_action(args, base_url):
                 print pt
             return True
         return response(resp)
-
-
-def tests_action(args, base_url):
-    if args.command != 'tests':
-        return False
-
-    if getattr(args, 'subcommand') != 'init':
-        return False
-    url = build_url(base_url, 'tests', args.project)
-    data = {}
-    if args.no_scripts:
-        data['project-scripts'] = False
-    else:
-        data['project-scripts'] = True
-
-    resp = request('put', url, json=data)
-    return response(resp)
-
-
-def pages_action(args, base_url):
-    if args.command != 'pages':
-        return False
-
-    if getattr(args, 'subcommand') not in ('update', 'delete', 'get'):
-        return False
-    url = build_url(base_url, 'pages', args.name)
-    data = {}
-    if args.subcommand == 'update':
-        data['url'] = args.dest
-        resp = request('post', url, json=data)
-    if args.subcommand == 'get':
-        resp = request('get', url)
-    if args.subcommand == 'delete':
-        resp = request('delete', url)
-    return response(resp)
 
 
 def backup_action(args, base_url):
@@ -1022,8 +985,6 @@ def main():
     if not(backup_action(args, base_url) or
            gerrit_api_htpasswd_action(args, base_url) or
            user_management_action(args, base_url) or
-           tests_action(args, base_url) or
-           pages_action(args, base_url) or
            github_action(args, base_url) or
            services_users_management_action(args, base_url) or
            job_action(args, base_url) or
