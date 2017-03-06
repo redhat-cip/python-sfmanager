@@ -2,7 +2,7 @@
 
 Name:           python-sfmanager
 Version:        0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        %{sum}
 
 License:        ASL 2.0
@@ -67,6 +67,8 @@ export PBR_VERSION=%{version}
 %install
 export PBR_VERSION=%{version}
 %{__python2} setup.py install --skip-build --root %{buildroot}
+mkdir -p %{buildroot}/%{_sysconfdir}/software-factory
+install -p -D -m 644 %{buildroot}/etc/software-factory.rc %{buildroot}/%{_sysconfdir}/%{name}/software-factory.rc
 
 %check
 nosetests -v
@@ -74,7 +76,11 @@ nosetests -v
 %files -n python2-sfmanager
 %{python2_sitelib}/*
 %{_bindir}/*
+%config(noreplace) %{_sysconfdir}/*
 
 %changelog
+* Mon Mar 6 2017 Matthieu Huin <mhuin@redhat.com> - 0.1-2
+- Initial packaging
+
 * Tue Feb 23 2017 Fabien Boucher <fboucher@redhat.com> - 0.1-1
 - Initial packaging
