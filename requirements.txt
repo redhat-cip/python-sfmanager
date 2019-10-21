@@ -1,6 +1,6 @@
 -e git+https://github.com/redhat-cip/pysflib.git#egg=pysflib
 requests
 pycrypto==2.6.1
-urllib3==1.11
+urllib3==1.24.2
 PrettyTable<0.8,>=0.7
 pyyaml==3.11
